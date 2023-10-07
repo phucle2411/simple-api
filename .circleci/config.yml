@@ -109,7 +109,7 @@ workflows:
               only: /^v.*/
             branches:
               ignore: /.*/
-      - deploy-k8s-assignment:
+      - deploy-k8s-devops:
           context: kubernetes
           requires:
             - hold
