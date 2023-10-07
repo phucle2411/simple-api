@@ -60,7 +60,7 @@ jobs:
       - run:
           name: publish helm chart to repo
           command: |
-            helm cm-push -f ./deployments/$CIRCLE_PROJECT_REPONAME ascenda
+            helm cm-push -f ./deployments/backend ascenda
   deploy-k8s-devops:
     docker:
       - image: "cimg/python:3.10.4"
