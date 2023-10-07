@@ -1,0 +1,120 @@
+version: 2.1
+
+orbs:
+  docker: circleci/docker@1.6.0
+  aws-eks: circleci/aws-eks@2.1.2
+  helm: circleci/helm@1.2.0
+
+jobs:
+  test-chart:
+    docker:
+      - image: cimg/base:2022.03-20.04
+    steps:
+      - checkout
+      - helm/install-helm-client:
+          version: v3.8.1
+      - run:
+          name: test helm chart
+          command: |
+            helm template $CIRCLE_PROJECT_REPONAME deployments/backend/
+
+  publish-tag:
+    executor: docker/docker
+    steps:
+      - setup_remote_docker:
+          version: 20.10.6
+      - checkout
+      - docker/check
+      - docker/build:
+          image: zizou2411/$CIRCLE_PROJECT_REPONAME
+          path: ./deployments
+          tag: ${CIRCLE_TAG:1}
+      - docker/push:
+          image: zizou2411/$CIRCLE_PROJECT_REPONAME
+          tag: ${CIRCLE_TAG:1}
+  publish-chart:
+    docker:
+      - image: cimg/base:2022.03-20.04
+    steps:
+      - checkout
+      - helm/install-helm-client:
+          version: v3.8.1
+      - run:
+          name: add helm repo
+          command: |
+            helm repo add gr https://charts.eks.pingto.site/ --username ${HELM_REPO_USERNAME} --password ${HELM_REPO_PASSWORD}
+      - run:
+          name: install helm cm-push plugin
+          command: |
+            helm plugin install https://github.com/chartmuseum/helm-push --version v0.10.2
+      - run:
+          name: override app version
+          command: |
+            if [ -z "$CIRCLE_TAG" ]; then
+              APP_VERSION=$CIRCLE_BRANCH-${CIRCLE_SHA1:0:8}
+            else
+              APP_VERSION=$CIRCLE_TAG
+            fi
+            echo "APP_VERSION=$APP_VERSION"
+            sed -i -e "s/appVersion: autogen/appVersion: \"$APP_VERSION\"/" ./deployments/backend/Chart.yaml
+      - run:
+          name: publish helm chart to repo
+          command: |
+            helm cm-push -f ./deployments/$CIRCLE_PROJECT_REPONAME gr
+  deploy-k8s-devops:
+    docker:
+      - image: "cimg/python:3.10.4"
+    steps:
+      - checkout
+      - aws-eks/update-kubeconfig-with-authenticator:
+          aws-region: ap-southeast-1
+          cluster-name: devops
+      - helm/upgrade-helm-chart:
+          helm-version: v3.8.1
+          chart: ./deployments/$CIRCLE_PROJECT_REPONAME
+          namespace: apps
+          release-name: $CIRCLE_PROJECT_REPONAME
+          values-to-override: "image.tag=${CIRCLE_TAG:1}"
+
+workflows:
+  version: 2
+  build-test-publish:
+    jobs:
+      - test-chart:
+          filters:
+            tags:
+              only: /^v.*/
+      - publish-tag:
+          context: dockerhub
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
+      - publish-chart:
+          context: chartmuseum
+          filters:
+            branches:
+              only:
+                - develop
+                - master
+            tags:
+              only: /^v.*/
+      - hold:
+          type: approval
+          requires:
+            - publish-tag
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
+      - deploy-k8s-assignment:
+          context: kubernetes
+          requires:
+            - hold
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/

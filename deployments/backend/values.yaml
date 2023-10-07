@@ -1,0 +1,154 @@
+# Default values for backend.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: zizou2411/simple-api
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: v0.5.0
+
+imagePullSecrets:
+  - name: my-registry-secret
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  {}
+  # fsGroup: 2000
+
+securityContext:
+  {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: true
+  className: ""
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    kubernetes.io/ingress.allow-http: "false"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: 512m
+
+  hosts:
+    - host: articuno.eks.pingto.site
+      paths:
+        - backend:
+            service:
+              name: backend
+              port:
+                number: 3000
+          path: /
+          pathType: Prefix
+  tls:
+    - secretName: articuno.eks.pingto.site
+      hosts:
+        - articuno.eks.pingto.site
+ingressMetrics:
+  enabled: true
+  className: ""
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    kubernetes.io/ingress.allow-http: "false"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/whitelist-source-range: "172.29.0.0/16, 10.0.0.0/8"
+
+  hosts:
+    - host: articuno.eks.pingto.site
+      paths:
+        - backend:
+            service:
+              name: backend
+              port:
+                number: 3000
+          path: /metrics
+          pathType: Prefix
+  tls:
+    - secretName: articuno.eks.pingto.site
+      hosts:
+        - articuno.eks.pingto.site
+resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  limits:
+    cpu: 2
+    memory: 2048Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 2
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# service monitor
+serviceMonitor:
+  ## @param metrics.serviceMonitor.enabled Create ServiceMonitor resource(s) for scraping metrics using PrometheusOperator
+  ##
+  enabled: true
+  ## @param metrics.serviceMonitor.namespace The namespace in which the ServiceMonitor will be created
+  ##
+  namespace: ""
+  ## @param metrics.serviceMonitor.interval The interval at which metrics should be scraped
+  ##
+  interval: 30s
+  ## @param metrics.serviceMonitor.scrapeTimeout The timeout after which the scrape is ended
+  ##
+  scrapeTimeout: ""
+  ## @param metrics.serviceMonitor.relabellings Metrics RelabelConfigs to apply to samples before scraping.
+  ##
+  relabellings: []
+  ## @param metrics.serviceMonitor.metricRelabelings Metrics RelabelConfigs to apply to samples before ingestion.
+  ##
+  metricRelabelings: []
+  ## @param metrics.serviceMonitor.honorLabels Specify honorLabels parameter to add the scrape endpoint
+  ##
+  honorLabels: false
+  ## @param metrics.serviceMonitor.additionalLabels Additional labels that can be used so ServiceMonitor resource(s) can be discovered by Prometheus
+  ##
+  additionalLabels:
+    release: prometheus-stack
+  ## @param metrics.serviceMonitor.podTargetLabels Labels from the Kubernetes pod to be transferred to the created metrics
+  ##
+  podTargetLabels: []
+  ## @param metrics.serviceMonitor.sampleLimit Limit of how many samples should be scraped from every Pod
+  ##
+  sampleLimit: false
+  ## @param metrics.serviceMonitor.targetLimit Limit of how many targets should be scraped
+  ##
+  targetLimit: false

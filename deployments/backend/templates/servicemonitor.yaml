@@ -1,0 +1,48 @@
+{{- /*
+Copyright VMware, Inc.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if .Values.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: backend
+  namespace: {{ default .Release.Namespace .Values.serviceMonitor.namespace | quote }}
+  labels:
+    release: prometheus-stack
+spec:
+  endpoints:
+    - port: http
+      path: /metrics
+      {{- if .Values.serviceMonitor.interval }}
+      interval: {{ .Values.serviceMonitor.interval }}
+      {{- end }}
+      {{- if .Values.serviceMonitor.scrapeTimeout }}
+      scrapeTimeout: {{ .Values.serviceMonitor.scrapeTimeout }}
+      {{- end }}
+      {{- if .Values.serviceMonitor.honorLabels }}
+      honorLabels: {{ .Values.serviceMonitor.honorLabels }}
+      {{- end }}
+      {{- if .Values.serviceMonitor.relabellings }}
+      relabelings: {{- toYaml .Values.serviceMonitor.relabellings | nindent 6 }}
+      {{- end }}
+      {{- if .Values.serviceMonitor.metricRelabelings }}
+      metricRelabelings: {{- toYaml .Values.serviceMonitor.metricRelabelings | nindent 6 }}
+      {{- end }}
+  {{- if .Values.serviceMonitor.podTargetLabels }}
+  podTargetLabels: {{- toYaml .Values.serviceMonitor.podTargetLabels | nindent 4 }}
+  {{- end }}
+  {{ with .Values.serviceMonitor.sampleLimit }}
+  sampleLimit: {{ . }}
+  {{- end }}
+  {{ with .Values.serviceMonitor.targetLimit }}
+  targetLimit: {{ . }}
+  {{- end }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: backend
+{{- end }}
