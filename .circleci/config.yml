@@ -86,6 +86,8 @@ workflows:
               only: /^v.*/
       - publish-tag:
           context: dockerhub
+          requires:
+            - test-chart
           filters:
             tags:
               only: /^v.*/
@@ -93,6 +95,8 @@ workflows:
               ignore: /.*/
       - publish-chart:
           context: chartmuseum
+          requires:
+            - test-chart
           filters:
             branches:
               only:
@@ -110,8 +114,8 @@ workflows:
       #         ignore: /.*/
       - deploy-k8s-devops:
           context: kubernetes
-          # requires:
-          #   - hold
+          requires:
+            - publish-tag
           filters:
             tags:
               only: /^v.*/
