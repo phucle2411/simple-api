@@ -15,13 +15,8 @@ RUN go build -o bin/simple-api
 
 FROM alpine:3.14 AS deploy
 
-RUN apk add git
-# https://git-scm.com/docs/git-config#Documentation/git-config.txt-corequotePath
-RUN git config --global core.quotepath off
-
 WORKDIR /app
 
 COPY --from=build /src/bin/ /app
-COPY config /app/config
 
-CMD ["/app/operarius"]
+CMD ["/app/simple-api"]
