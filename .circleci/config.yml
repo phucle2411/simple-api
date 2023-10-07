@@ -42,7 +42,7 @@ jobs:
       - run:
           name: add helm repo
           command: |
-            helm repo add gr https://charts.eks.pingto.site/ --username ${HELM_REPO_USERNAME} --password ${HELM_REPO_PASSWORD}
+            helm repo add ascenda https://charts.eks.pingto.site/ --username ${HELM_REPO_USERNAME} --password ${HELM_REPO_PASSWORD}
       - run:
           name: install helm cm-push plugin
           command: |
@@ -60,7 +60,7 @@ jobs:
       - run:
           name: publish helm chart to repo
           command: |
-            helm cm-push -f ./deployments/$CIRCLE_PROJECT_REPONAME gr
+            helm cm-push -f ./deployments/$CIRCLE_PROJECT_REPONAME ascenda
   deploy-k8s-devops:
     docker:
       - image: "cimg/python:3.10.4"
@@ -71,9 +71,9 @@ jobs:
           cluster-name: devops
       - helm/upgrade-helm-chart:
           helm-version: v3.8.1
-          chart: ./deployments/$CIRCLE_PROJECT_REPONAME
+          chart: ./deployments/backend
           namespace: apps
-          release-name: $CIRCLE_PROJECT_REPONAME
+          release-name: backend
           values-to-override: "image.tag=${CIRCLE_TAG:1}"
 
 workflows:
@@ -96,23 +96,22 @@ workflows:
           filters:
             branches:
               only:
-                - develop
-                - master
+                - main
             tags:
               only: /^v.*/
-      - hold:
-          type: approval
-          requires:
-            - publish-tag
-          filters:
-            tags:
-              only: /^v.*/
-            branches:
-              ignore: /.*/
+      # - hold:
+      #     type: approval
+      #     requires:
+      #       - publish-tag
+      #     filters:
+      #       tags:
+      #         only: /^v.*/
+      #       branches:
+      #         ignore: /.*/
       - deploy-k8s-devops:
           context: kubernetes
-          requires:
-            - hold
+          # requires:
+          #   - hold
           filters:
             tags:
               only: /^v.*/
